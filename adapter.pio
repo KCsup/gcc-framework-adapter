@@ -1,0 +1,30 @@
+; PIO clock is 1/5th CPU clock, which needs to be 125 MHz
+; so the PIO clock is 25 MHz
+
+.program adapter
+
+PUBLIC out_init:
+	set pins, 1 ; set out line to high
+	set pindirs, 1 ; pullup for outpup
+out_loop:
+	pull ifempty block ; do nothing if there is nothing to pull, and stall
+					   ; until TX FIFO is read from
+	out x, 1 ; send next out bit to x register
+	out y, 1 ; is this the end of the output message
+	set pins, 0 [24] ; set pin low for 1 us
+	mov pins, x [24] ; set desired pin value for 1 us
+	nop [25] ; hold for 1 us
+	set pins, 1 [24] ; end on high for 1 us
+	jmp !y out_end ; if is the end of output send the end bit
+	jmp out_loop
+out_end:
+	set pins, 0 [20] ; set pins low for slightly less time (<1 us)
+	set pins, 1 [45] ; set pins high for less than 2 us, then continue on to in
+PUBLIC in_init:
+	set pindirs, 0 ; no default for pin allowing for controller to handle
+in_loop:
+	wait 0 pin 0 [24] 
+	nop [24]
+	in pins, 1
+	wait 1 pin 0 [24]
+	jmp in_loop
