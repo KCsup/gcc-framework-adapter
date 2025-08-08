@@ -3,7 +3,8 @@
 #include "hardware/pio.h"
 #include "adapter.pio.h"
 #include <stdint.h>
-#include <math.h>
+#include <stdio.h>
+#include "hardware/clocks.h"
 
 #define DATA_PIN 28
 
@@ -24,6 +25,9 @@ void encodeCommands(int byteCount,
             outByte |= ((CURRENT_BYTE & (1 << bitI)) << (bitI + 1))
                 | (1 << (bitI * 2));
 
+        // set the last bit in the command to 0
+        outByte &= ((0xFFFF) - 1);
+
         outCommands[byteI] = outByte;
     }
     
@@ -31,7 +35,7 @@ void encodeCommands(int byteCount,
 
 void combineCommands(int inCommandCount,
                      uint16_t inputCommands[inCommandCount],
-                     uint32_t combined[(int) ceil(inCommandCount / 2)])
+                     uint32_t combined[])
 {
     // hex value visualization:
     // 0xAA to 16 bit -> 0x00AA
@@ -57,10 +61,17 @@ void combineCommands(int inCommandCount,
 
 int main()
 {
+    stdio_init_all();
+
+    // set sys clock to 125,000 KHz (125 MHz)
+    set_sys_clock_khz(125000, true);
+
     gpio_init(DATA_PIN);
     gpio_set_dir(DATA_PIN, GPIO_IN); // since pullup is only accessible for
                                      // input pins
     gpio_pull_up(DATA_PIN);
+
+    sleep_us(100);
 
     PIO pio = pio0;
     pio_gpio_init(pio, DATA_PIN);
@@ -74,13 +85,13 @@ int main()
 
     // from left to right
     // send bits from the MSB down
-    sm_config_set_out_shift(&pio_config, false, false, 16);
+    sm_config_set_out_shift(&pio_config, false, true, 16);
     // from right to left
     // receive bits from LSB up
     // NOT automatically sending the data to the RX FIFO when filled (32 bits)
-    sm_confif_set_in_shift(&pio_config, true, false, 32);
+    sm_config_set_in_shift(&pio_config, true, true, 8);
 
-    pio_sm_init(pio, 0, &pio_config);
+    pio_sm_init(pio, 0, offset, &pio_config);
     pio_sm_set_enabled(pio, 0, true);
 
     while(true)
@@ -94,7 +105,11 @@ int main()
         combineCommands(1, encoded, readyCommands);
 
         // send command
+        printf("Sending command\n");
+        
         pio_sm_put_blocking(pio, 0, readyCommands[0]);
+        // while(true)
+        printf("Sent Data: %08x\n", readyCommands[0]);
 
         // sm will now be in "input mode"
         // so pull info
