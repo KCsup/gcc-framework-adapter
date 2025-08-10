@@ -2,9 +2,9 @@
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "adapter.pio.h"
-#include <stdint.h>
 #include <stdio.h>
 #include "hardware/clocks.h"
+#include "adapter.h"
 
 #define DATA_PIN 28
 
@@ -35,7 +35,7 @@ void encodeCommands(int byteCount,
 
 void combineCommands(int inCommandCount,
                      uint16_t inputCommands[inCommandCount],
-                     uint32_t combined[])
+                     uint32_t combined[COMBINED_LEN(inCommandCount)])
 {
     // hex value visualization:
     // 0xAA to 16 bit -> 0x00AA
@@ -57,6 +57,18 @@ void combineCommands(int inCommandCount,
 
         currentAppend++;
     }
+}
+
+// writes the combined output commands for the OSR, and writes the expected
+// number of bytes from the controller in response
+void prepareCommand(Command command,
+                    uint32_t outputCommands[COMBINED_LEN(command.bytesLength)])
+{
+    // encode the commands for the SM to read then output
+    uint16_t tempCommands[command.bytesLength];
+    encodeCommands(command.bytesLength, command.arguments, tempCommands);
+
+    combineCommands(command.bytesLength, tempCommands, outputCommands);
 }
 
 int main()
@@ -97,34 +109,32 @@ int main()
 
     while(true)
     {
-        const int COMMAND_SIZE = 1;
-        uint8_t command[1] = { 0x00 };
+        const Command sending = ID;
         
-        uint16_t encoded[COMMAND_SIZE];
-        encodeCommands(COMMAND_SIZE, command, encoded);
-        
-        uint32_t readyCommands[1];
-        combineCommands(COMMAND_SIZE, encoded, readyCommands);
+        int combinedSendLen = COMBINED_LEN(sending.bytesLength);
+        uint32_t outputCommands[combinedSendLen];
 
+        prepareCommand(sending, outputCommands);
+        
+        
         // send command
         printf("Sending command\n");
         
-        for(int i = 0; i < 1; i++)
+        for(int i = 0; i < combinedSendLen; i++)
         {
-            pio_sm_put_blocking(pio, 0, readyCommands[i]);
+            pio_sm_put_blocking(pio, 0, outputCommands[i]);
             // while(true)
-            printf("Sent Data: %08x\n", readyCommands[i]);
+            printf("Sent Data %d: %08x\n", i, outputCommands[i]);
         }
 
         // sm will now be in "input mode"
         // so pull info
 
-        const int IN_SIZE = 3;
-        for(int i = 0; i < IN_SIZE; i++)
+        for(int i = 0; i < sending.responseBytesLength; i++)
         {
             uint8_t readData = pio_sm_get_blocking(pio, 0);
 
-            printf("Read Data: %02x\n", readData);
+            printf("Read Data %d: %02x\n", i, readData);
         }
         pio_sm_set_enabled(pio, 0, false);
         pio_sm_init(pio, 0, offset + adapter_offset_out_init, &pio_config);
