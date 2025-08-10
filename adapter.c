@@ -89,34 +89,43 @@ int main()
     // from right to left
     // receive bits from LSB up
     // NOT automatically sending the data to the RX FIFO when filled (32 bits)
-    sm_config_set_in_shift(&pio_config, true, true, 8);
+    // WORKS. DO NOT TOUCH
+    sm_config_set_in_shift(&pio_config, false, true, 8);
 
     pio_sm_init(pio, 0, offset, &pio_config);
     pio_sm_set_enabled(pio, 0, true);
 
     while(true)
     {
-        const uint8_t ID_COMMAND[1] = { 0x00 };
+        const int COMMAND_SIZE = 1;
+        uint8_t command[1] = { 0x00 };
         
-        uint16_t encoded[1];
-        encodeCommands(1, ID_COMMAND, encoded);
+        uint16_t encoded[COMMAND_SIZE];
+        encodeCommands(COMMAND_SIZE, command, encoded);
         
         uint32_t readyCommands[1];
-        combineCommands(1, encoded, readyCommands);
+        combineCommands(COMMAND_SIZE, encoded, readyCommands);
 
         // send command
         printf("Sending command\n");
         
-        pio_sm_put_blocking(pio, 0, readyCommands[0]);
-        // while(true)
-        printf("Sent Data: %08x\n", readyCommands[0]);
+        for(int i = 0; i < 1; i++)
+        {
+            pio_sm_put_blocking(pio, 0, readyCommands[i]);
+            // while(true)
+            printf("Sent Data: %08x\n", readyCommands[i]);
+        }
 
         // sm will now be in "input mode"
         // so pull info
-        uint32_t readData = pio_sm_get_blocking(pio, 0);
 
-        printf("Read Data: %08x\n", readData);
+        const int IN_SIZE = 3;
+        for(int i = 0; i < IN_SIZE; i++)
+        {
+            uint8_t readData = pio_sm_get_blocking(pio, 0);
 
+            printf("Read Data: %02x\n", readData);
+        }
         pio_sm_set_enabled(pio, 0, false);
         pio_sm_init(pio, 0, offset + adapter_offset_out_init, &pio_config);
         pio_sm_set_enabled(pio, 0, true);
