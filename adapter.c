@@ -25,11 +25,11 @@ void encodeCommands(int byteCount,
             outByte |= ((CURRENT_BYTE & (1 << bitI)) << (bitI + 1))
                 | (1 << (bitI * 2));
 
-        // set the last bit in the command to 0
-        outByte &= ((0xFFFF) - 1);
-
         outCommands[byteI] = outByte;
     }
+
+    // set the last bit of the last byte in the command to 0
+    outCommands[byteCount - 1] &= ((0xFFFF) - 1);
     
 }
 
@@ -97,7 +97,7 @@ int main()
 
     // from left to right
     // send bits from the MSB down
-    sm_config_set_out_shift(&pio_config, false, true, 16);
+    sm_config_set_out_shift(&pio_config, false, false, 16);
     // from right to left
     // receive bits from LSB up
     // NOT automatically sending the data to the RX FIFO when filled (32 bits)
@@ -120,21 +120,24 @@ int main()
         // send command
         printf("Sending command\n");
         
+        // while(true)
+        // {
         for(int i = 0; i < combinedSendLen; i++)
         {
             pio_sm_put_blocking(pio, 0, outputCommands[i]);
             // while(true)
             printf("Sent Data %d: %08x\n", i, outputCommands[i]);
         }
+        // }
 
         // sm will now be in "input mode"
         // so pull info
 
         for(int i = 0; i < sending.responseBytesLength; i++)
         {
-            uint8_t readData = pio_sm_get_blocking(pio, 0);
+            uint32_t readData = pio_sm_get_blocking(pio, 0);
 
-            printf("Read Data %d: %02x\n", i, readData);
+            printf("Read Data %d: %08x\n", i, readData);
         }
         pio_sm_set_enabled(pio, 0, false);
         pio_sm_init(pio, 0, offset + adapter_offset_out_init, &pio_config);
