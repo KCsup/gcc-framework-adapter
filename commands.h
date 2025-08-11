@@ -1,5 +1,5 @@
-#ifndef ADAPTER_H
-#define ADAPTER_H
+#ifndef COMMANDS_H
+#define COMMANDS_H
 
 #include <stdint.h>
 #include <math.h>
@@ -15,5 +15,8 @@ typedef struct {
 #define ORIGIN ((Command) { 1, 5, { 0x41, 0, 0 } })
 
 #define COMBINED_LEN(args) ((int) ceil((double) args / 2))
+
+void prepareCommand(Command command,
+                    uint32_t outputCommands[COMBINED_LEN(command.bytesLength)]);
 
 #endif

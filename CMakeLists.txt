@@ -11,6 +11,7 @@ pico_sdk_init()
 
 add_executable(adapter
   adapter.c
+  commands.c
 )
 
 pico_generate_pio_header(adapter ${CMAKE_CURRENT_LIST_DIR}/adapter.pio)
