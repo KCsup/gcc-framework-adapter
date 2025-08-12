@@ -9,12 +9,6 @@
 
 #define DATA_PIN 28
 
-// void receiveBytesDMA(PIO pio, unsigned int sm, size_t len, uint8_t buffer[len])
-// {
-
-//     dma_channel_wait_for_finish_blocking(dmaChannel);
-//     dma_channel_unclaim(dmaChannel);
-// }
 
 int main()
 {
@@ -79,7 +73,7 @@ int main()
 
     while(true)
     {
-        const Command sending = STATUS;
+        const Command sending = ORIGIN;
         
         int combinedSendLen = COMBINED_LEN(sending.bytesLength);
         uint32_t outputCommands[combinedSendLen];
@@ -90,31 +84,21 @@ int main()
         // send command
         printf("Sending command\n");
         
-        // while(true)
-        // {
         for(int i = 0; i < combinedSendLen; i++)
         {
             pio_sm_put_blocking(pio, 0, outputCommands[i]);
             // while(true)
             printf("Sent Data %d: %08x\n", i, outputCommands[i]);
         }
-        // }
 
         // sm will now be in "input mode"
         // so pull info
 
-        // for(int i = 0; i < sending.responseBytesLength; i++)
-        // {
-        //     uint32_t readData = pio_sm_get_blocking(pio, 0);
-
-        //     printf("Read Data %d: %08x\n", i, readData);
-        // }
-
         uint8_t receiveBuffer[sending.responseBytesLength];
-        // receiveBytesDMA(pio, 0, sending.responseBytesLength, receiveBuffer);
-        dma_channel_transfer_to_buffer_now(dmaChannel,
-                                           receiveBuffer,
-                                           sending.responseBytesLength);
+        dma_channel_set_transfer_count(dmaChannel,
+                                       sending.responseBytesLength,
+                                       false);
+        dma_channel_set_write_addr(dmaChannel, receiveBuffer, true);
 
         for(int i = 0; i < sending.responseBytesLength; i++)
         {
@@ -125,6 +109,9 @@ int main()
         pio_sm_init(pio, 0, offset + adapter_offset_out_init, &pio_config);
         pio_sm_set_enabled(pio, 0, true);
 
+        dma_channel_abort(dmaChannel);
+
+        sleep_ms(1000);
     }
 
     
