@@ -5,8 +5,16 @@
 #include <stdio.h>
 #include "hardware/clocks.h"
 #include "commands.h"
+#include "hardware/dma.h"
 
 #define DATA_PIN 28
+
+// void receiveBytesDMA(PIO pio, unsigned int sm, size_t len, uint8_t buffer[len])
+// {
+
+//     dma_channel_wait_for_finish_blocking(dmaChannel);
+//     dma_channel_unclaim(dmaChannel);
+// }
 
 int main()
 {
@@ -44,9 +52,34 @@ int main()
     pio_sm_init(pio, 0, offset, &pio_config);
     pio_sm_set_enabled(pio, 0, true);
 
+    // DMA conf
+    const int dmaChannel = dma_claim_unused_channel(true); // required bool
+    dma_channel_config dmaConfig = dma_channel_get_default_config(dmaChannel);
+
+    // configured to send data blocks in bytes
+    channel_config_set_transfer_data_size(&dmaConfig, DMA_SIZE_8);
+
+    // always read from the same address
+    channel_config_set_read_increment(&dmaConfig, false);
+    // increment the write address (inside the buffer)
+    channel_config_set_write_increment(&dmaConfig, true);
+
+    // sets the DMA dreq to the SM's RX FIFO (false in the get_dreq specifies
+    // the RX FIFO)
+    channel_config_set_dreq(&dmaConfig, pio_get_dreq(pio, 0, false));
+
+    dma_channel_configure(
+        dmaChannel,
+        &dmaConfig,
+        NULL,
+        &pio->rxf[0], // address for RX FIFO
+        MAX_COMMAND_RESPONSE_LEN,
+        false // don't start now
+    );
+
     while(true)
     {
-        const Command sending = ID;
+        const Command sending = STATUS;
         
         int combinedSendLen = COMBINED_LEN(sending.bytesLength);
         uint32_t outputCommands[combinedSendLen];
@@ -70,16 +103,31 @@ int main()
         // sm will now be in "input mode"
         // so pull info
 
+        // for(int i = 0; i < sending.responseBytesLength; i++)
+        // {
+        //     uint32_t readData = pio_sm_get_blocking(pio, 0);
+
+        //     printf("Read Data %d: %08x\n", i, readData);
+        // }
+
+        uint8_t receiveBuffer[sending.responseBytesLength];
+        // receiveBytesDMA(pio, 0, sending.responseBytesLength, receiveBuffer);
+        dma_channel_transfer_to_buffer_now(dmaChannel,
+                                           receiveBuffer,
+                                           sending.responseBytesLength);
+
         for(int i = 0; i < sending.responseBytesLength; i++)
         {
-            uint32_t readData = pio_sm_get_blocking(pio, 0);
-
-            printf("Read Data %d: %08x\n", i, readData);
+            printf("Read Data %d: %02x\n", i, receiveBuffer[i]);
         }
+        
         pio_sm_set_enabled(pio, 0, false);
         pio_sm_init(pio, 0, offset + adapter_offset_out_init, &pio_config);
         pio_sm_set_enabled(pio, 0, true);
+
     }
+
     
+    dma_channel_unclaim(dmaChannel);
     return 0;
 }
