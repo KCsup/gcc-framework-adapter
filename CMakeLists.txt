@@ -20,4 +20,9 @@ pico_generate_pio_header(adapter ${CMAKE_CURRENT_LIST_DIR}/adapter.pio)
 pico_enable_stdio_usb(adapter 1)
 pico_enable_stdio_uart(adapter 1)
 pico_add_extra_outputs(adapter)
-target_link_libraries(adapter pico_stdlib hardware_pio hardware_clocks)
+target_link_libraries(adapter
+  pico_stdlib
+  hardware_pio
+  hardware_clocks
+  hardware_dma
+)
