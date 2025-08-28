@@ -74,43 +74,16 @@ int main()
     while(true)
     {
         const Command sending = ORIGIN;
-        
-        int combinedSendLen = COMBINED_LEN(sending.bytesLength);
-        uint32_t outputCommands[combinedSendLen];
-
-        prepareCommand(sending, outputCommands);
-        
-        
-        // send command
-        printf("Sending command\n");
-        
-        for(int i = 0; i < combinedSendLen; i++)
-        {
-            pio_sm_put_blocking(pio, 0, outputCommands[i]);
-            // while(true)
-            printf("Sent Data %d: %08x\n", i, outputCommands[i]);
-        }
-
-        // sm will now be in "input mode"
-        // so pull info
 
         uint8_t receiveBuffer[sending.responseBytesLength];
-        dma_channel_set_transfer_count(dmaChannel,
-                                       sending.responseBytesLength,
-                                       false);
-        dma_channel_set_write_addr(dmaChannel, receiveBuffer, true);
-
-        for(int i = 0; i < sending.responseBytesLength; i++)
-        {
-            printf("Read Data %d: %02x\n", i, receiveBuffer[i]);
-        }
+        sendCommand(sending,
+                    receiveBuffer,
+                    pio,
+                    pio_config,
+                    offset,
+                    adapter_offset_out_init,
+                    dmaChannel);
         
-        pio_sm_set_enabled(pio, 0, false);
-        pio_sm_init(pio, 0, offset + adapter_offset_out_init, &pio_config);
-        pio_sm_set_enabled(pio, 0, true);
-
-        dma_channel_abort(dmaChannel);
-
         sleep_ms(1000);
     }
 

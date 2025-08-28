@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 #include <math.h>
+#include "hardware/pio.h"
+#include "hardware/dma.h"
+#include <stdio.h>
 
 typedef struct {
     int bytesLength;
@@ -20,5 +23,13 @@ typedef struct {
 
 void prepareCommand(Command command,
                     uint32_t outputCommands[COMBINED_LEN(command.bytesLength)]);
+
+void sendCommand(Command command,
+                 uint8_t outBuffer[command.responseBytesLength],
+                 PIO pio,
+                 pio_sm_config pioConfig,
+                 int pioDefaultOffset,
+                 int pioOutmodeOffset,
+                 const int dmaChannel);
 
 #endif
