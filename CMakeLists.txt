@@ -10,11 +10,12 @@ set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 add_executable(adapter
-  adapter.c
-  commands.c
+  src/adapter.c
+  src/commands.c
+  src/usb_descriptors.c
 )
 
-pico_generate_pio_header(adapter ${CMAKE_CURRENT_LIST_DIR}/adapter.pio)
+pico_generate_pio_header(adapter ${CMAKE_CURRENT_LIST_DIR}/src/adapter.pio)
 
 
 pico_enable_stdio_usb(adapter 1)
@@ -25,4 +26,6 @@ target_link_libraries(adapter
   hardware_pio
   hardware_clocks
   hardware_dma
+  tinyusb_device
+  tinyusb_board
 )
