@@ -2,17 +2,28 @@
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "adapter.pio.h"
-#include <stdio.h>
 #include "hardware/clocks.h"
 #include "commands.h"
 #include "hardware/dma.h"
+
+#include "bsp/board_api.h"
+#include "tusb.h"
 
 #define DATA_PIN 28
 
 
 int main()
 {
-    stdio_init_all();
+    // USB
+    board_init();
+    tusb_init();
+
+    if(board_init_after_tusb)
+    {
+        board_init_after_tusb();
+    }
+
+    // stdio_init_all();
 
     // set sys clock to 125,000 KHz (125 MHz)
     set_sys_clock_khz(125000, true);
@@ -71,23 +82,40 @@ int main()
         false // don't start now
     );
 
+
     while(true)
     {
-        const Command sending = ORIGIN;
+        tud_task();
+        // const Command sending = ORIGIN;
 
-        uint8_t receiveBuffer[sending.responseBytesLength];
-        sendCommand(sending,
-                    receiveBuffer,
-                    pio,
-                    pio_config,
-                    offset,
-                    adapter_offset_out_init,
-                    dmaChannel);
+        // uint8_t receiveBuffer[sending.responseBytesLength];
+        // sendCommand(sending,
+        //             receiveBuffer,
+        //             pio,
+        //             pio_config,
+        //             offset,
+        //             adapter_offset_out_init,
+        //             dmaChannel);
         
-        sleep_ms(1000);
+        // sleep_ms(1000);
     }
 
     
     dma_channel_unclaim(dmaChannel);
     return 0;
 }
+
+// device to host
+uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
+{
+    return 0;
+}
+
+// host to device
+void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
+{
+    // uint8_t response[33] = {0x00};
+    // tud_hid_report(0, response, 33);
+    tud_hid_report(0, buffer, bufsize);
+}
+
