@@ -94,7 +94,7 @@ int main()
 
     // from left to right
     // send bits from the MSB down
-    sm_config_set_out_shift(&pio_config, false, false, 16);
+    sm_config_set_out_shift(&pio_config, false, false, 32);
     // from right to left
     // receive bits from LSB up
     // NOT automatically sending the data to the RX FIFO when filled (32 bits)
@@ -139,22 +139,39 @@ int main()
         adapter_offset_out_init,
         dmaChannel
     };
+
+    int originSent = 0;
     
     while(true)
     {
         // TODO: Uncomment for USB
         // tud_task();
+
+        if(!controllerConnected(adInf))
+        {
+            originSent = 0;
+            continue;
+        }
+        
+        // controller is connected
+        // check for if origin was sent
+        if(!originSent)
+        {
+            sendCommand(ORIGIN, NULL, adInf);
+            originSent = 1;
+        }
         
         // const Command sending = ORIGIN;
 
-        // uint8_t receiveBuffer[sending.responseBytesLength];
+        Command sending = STATUS;
+        uint8_t receiveBuffer[sending.responseBytesLength];
 
-        // sendCommand(sending,
-        //             receiveBuffer,
-        //             adInf);
+        sendCommand(sending,
+                    receiveBuffer,
+                    adInf);
 
         // controllerConnected(adInf);
-        printf("Controller connected?: %d\n", controllerConnected(adInf));
+        // printf("Controller connected?: %d\n", controllerConnected(adInf));
         
         sleep_ms(1000);
 
