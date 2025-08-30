@@ -6,8 +6,9 @@
 #include "commands.h"
 #include "hardware/dma.h"
 
-#include "bsp/board_api.h"
-#include "tusb.h"
+// TODO: Uncomment for USB
+// #include "bsp/board_api.h"
+// #include "tusb.h"
 
 #include <stdio.h>
 
@@ -59,15 +60,17 @@ const uint8_t defaultResponse[37] = {
 int main()
 {
     // USB
-    board_init();
-    tusb_init();
+    // TODO: Uncomment for USB
+    // board_init();
+    // tusb_init();
 
-    if(board_init_after_tusb)
-    {
-        board_init_after_tusb();
-    }
+    // TODO: Uncomment for USB
+    // if(board_init_after_tusb)
+    // {
+    //     board_init_after_tusb();
+    // }
 
-    // stdio_init_all();
+    stdio_init_all();
 
     // set sys clock to 125,000 KHz (125 MHz)
     set_sys_clock_khz(125000, true);
@@ -128,28 +131,40 @@ int main()
 
 
     hidReportPending = true;
+
+    const AdapterInfo adInf = {
+        pio,
+        pio_config,
+        offset,
+        adapter_offset_out_init,
+        dmaChannel
+    };
     
     while(true)
     {
-        tud_task();
+        // TODO: Uncomment for USB
+        // tud_task();
+        
         // const Command sending = ORIGIN;
 
         // uint8_t receiveBuffer[sending.responseBytesLength];
+
         // sendCommand(sending,
         //             receiveBuffer,
-        //             pio,
-        //             pio_config,
-        //             offset,
-        //             adapter_offset_out_init,
-        //             dmaChannel);
+        //             adInf);
+
+        // controllerConnected(adInf);
+        printf("Controller connected?: %d\n", controllerConnected(adInf));
         
-        // sleep_ms(1000);
-        if(tud_hid_ready() && hidReportPending)
-        {
-            tud_hid_report(0, defaultResponse, sizeof(defaultResponse));
+        sleep_ms(1000);
+
+        // TODO: Uncomment for USB
+        // if(tud_hid_ready() && hidReportPending)
+        // {
+        //     tud_hid_report(0, defaultResponse, sizeof(defaultResponse));
             
-            hidReportPending = false;
-        }
+        //     hidReportPending = false;
+        // }
     }
 
     
@@ -157,26 +172,29 @@ int main()
     return 0;
 }
 
-void tud_hid_report_complete_cb(uint8_t instance,
-                                uint8_t const* report,
-                                uint16_t len)
-{
-    hidReportPending = true;
-}
+// TODO: Uncomment for USB
+// void tud_hid_report_complete_cb(uint8_t instance,
+//                                 uint8_t const* report,
+//                                 uint16_t len)
+// {
+//     hidReportPending = true;
+// }
 
 // device to host
-uint16_t tud_hid_get_report_cb(uint8_t itf,
-                               uint8_t report_id,
-                               hid_report_type_t report_type,
-                               uint8_t* buffer,
-                               uint16_t reqlen)
-{
-    return 0;
-}
+// TODO: Uncomment for USB
+// uint16_t tud_hid_get_report_cb(uint8_t itf,
+//                                uint8_t report_id,
+//                                hid_report_type_t report_type,
+//                                uint8_t* buffer,
+//                                uint16_t reqlen)
+// {
+//     return 0;
+// }
 
 // host to device
-void tud_hid_set_report_cb(uint8_t itf,
-                           uint8_t report_id,
-                           hid_report_type_t report_type,
-                           uint8_t const* buffer,
-                           uint16_t bufsize);
+// TODO: Uncomment for USB
+// void tud_hid_set_report_cb(uint8_t itf,
+//                            uint8_t report_id,
+//                            hid_report_type_t report_type,
+//                            uint8_t const* buffer,
+//                            uint16_t bufsize);

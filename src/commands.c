@@ -64,54 +64,69 @@ void prepareCommand(Command command,
     combineCommands(command.bytesLength, tempCommands, outputCommands);
 }
 
+void zeroBuffer(Command sending, uint8_t buffer[sending.responseBytesLength])
+{
+    for(int i = 0; i < sending.responseBytesLength; i++)
+        buffer[i] = 0x00;
+}
+
 
 void sendCommand(Command command,
                  uint8_t outBuffer[command.responseBytesLength],
-                 PIO pio,
-                 pio_sm_config pioConfig,
-                 int pioDefaultOffset,
-                 int pioOutmodeOffset,
-                 const int dmaChannel)
+                 AdapterInfo adInf)
 {
+    zeroBuffer(command, outBuffer);
     
-        int combinedSendLen = COMBINED_LEN(command.bytesLength);
-        uint32_t outputCommands[combinedSendLen];
-        
-        // concat commands into 32 bit blocks
-        prepareCommand(command, outputCommands);
-        
-        
-        // send command
-        printf("Sending command\n");
-        
-        for(int i = 0; i < combinedSendLen; i++)
-        {
-            pio_sm_put_blocking(pio, 0, outputCommands[i]);
-            printf("Sent Data %d: %08x\n", i, outputCommands[i]);
-        }
+    int combinedSendLen = COMBINED_LEN(command.bytesLength);
+    uint32_t outputCommands[combinedSendLen];
+    
+    // concat commands into 32 bit blocks
+    prepareCommand(command, outputCommands);
+    
+    
+    // send command
+    printf("Sending command\n");
+    
+    for(int i = 0; i < combinedSendLen; i++)
+    {
+        pio_sm_put_blocking(adInf.pio, 0, outputCommands[i]);
+        // printf("Sent Data %d: %08x\n", i, outputCommands[i]);
+    }
 
-        // sm will now be in "input mode"
-        // so pull info
-        dma_channel_set_transfer_count(dmaChannel,
-                                       command.responseBytesLength,
-                                       false);
-        // write to method output buffer
-        // trigger start of DMA channel
-        dma_channel_set_write_addr(dmaChannel, outBuffer, true);
+    // sm will now be in "input mode"
+    // so pull info
+    dma_channel_set_transfer_count(adInf.dmaChannel,
+                                   command.responseBytesLength,
+                                   false);
+    // write to method output buffer
+    // trigger start of DMA channel
+    dma_channel_set_write_addr(adInf.dmaChannel, outBuffer, true);
 
-        for(int i = 0; i < command.responseBytesLength; i++)
-        {
-            printf("Read Data %d: %02x\n", i, outBuffer[i]);
-        }
-        
-        // return to outmode
-        pio_sm_set_enabled(pio, 0, false);
-        pio_sm_init(pio,
-                    0,
-                    pioDefaultOffset + pioOutmodeOffset,
-                    &pioConfig);
-        pio_sm_set_enabled(pio, 0, true);
+    for(int i = 0; i < command.responseBytesLength; i++)
+    {
+        printf("Read Data %d: %02x\n", i, outBuffer[i]);
+    }
+    
+    // return to outmode
+    pio_sm_set_enabled(adInf.pio, 0, false);
+    pio_sm_init(adInf.pio,
+                0,
+                adInf.pioDefaultOffset + adInf.pioOutmodeOffset,
+                &adInf.pioConfig);
+    pio_sm_set_enabled(adInf.pio, 0, true);
 
-        dma_channel_abort(dmaChannel);
+    dma_channel_abort(adInf.dmaChannel);
+}
+
+int controllerConnected(AdapterInfo adInf)
+{
+    Command id = ID;
+    uint8_t outBuffer[id.responseBytesLength];
+    sendCommand(id, outBuffer, adInf);
+
+    for(int i = 0; i < 3; i++)
+        if(outBuffer[i] != 0x00) return 1;
+
+    return 0;
 }
 
