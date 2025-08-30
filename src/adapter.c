@@ -9,7 +9,51 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 
+#include <stdio.h>
+
 #define DATA_PIN 28
+
+volatile bool hidReportPending = false;
+
+const uint8_t defaultResponse[37] = {
+        0x21,
+        0x04,
+        0x00,
+        0x00,
+        0x80,
+        0x80,
+        0x80,
+        0x80,
+        0x00,
+        0x00,
+        0x04,
+        0x00,
+        0x00,
+        0x80,
+        0x80,
+        0x80,
+        0x80,
+        0x00,
+        0x00,
+        0x04,
+        0x00,
+        0x00,
+        0x80,
+        0x80,
+        0x80,
+        0x80,
+        0x00,
+        0x00,
+        0x04,
+        0x00,
+        0x00,
+        0x80,
+        0x80,
+        0x80,
+        0x80,
+        0x00,
+        0x00
+    };
 
 
 int main()
@@ -83,6 +127,8 @@ int main()
     );
 
 
+    hidReportPending = true;
+    
     while(true)
     {
         tud_task();
@@ -98,6 +144,12 @@ int main()
         //             dmaChannel);
         
         // sleep_ms(1000);
+        if(tud_hid_ready() && hidReportPending)
+        {
+            tud_hid_report(0, defaultResponse, sizeof(defaultResponse));
+            
+            hidReportPending = false;
+        }
     }
 
     
@@ -105,17 +157,26 @@ int main()
     return 0;
 }
 
+void tud_hid_report_complete_cb(uint8_t instance,
+                                uint8_t const* report,
+                                uint16_t len)
+{
+    hidReportPending = true;
+}
+
 // device to host
-uint16_t tud_hid_get_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t* buffer, uint16_t reqlen)
+uint16_t tud_hid_get_report_cb(uint8_t itf,
+                               uint8_t report_id,
+                               hid_report_type_t report_type,
+                               uint8_t* buffer,
+                               uint16_t reqlen)
 {
     return 0;
 }
 
 // host to device
-void tud_hid_set_report_cb(uint8_t itf, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
-{
-    // uint8_t response[33] = {0x00};
-    // tud_hid_report(0, response, 33);
-    tud_hid_report(0, buffer, bufsize);
-}
-
+void tud_hid_set_report_cb(uint8_t itf,
+                           uint8_t report_id,
+                           hid_report_type_t report_type,
+                           uint8_t const* buffer,
+                           uint16_t bufsize);
