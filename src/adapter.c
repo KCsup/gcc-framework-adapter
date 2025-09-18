@@ -1,3 +1,4 @@
+#include "adapter.h"
 #include "pico/stdlib.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
@@ -6,9 +7,8 @@
 #include "commands.h"
 #include "hardware/dma.h"
 
-// TODO: Uncomment for USB
-// #include "bsp/board_api.h"
-// #include "tusb.h"
+#include "bsp/board_api.h"
+#include "tusb.h"
 
 #include <stdio.h>
 
@@ -16,59 +16,16 @@
 
 volatile bool hidReportPending = false;
 
-const uint8_t defaultResponse[37] = {
-        0x21,
-        0x04,
-        0x00,
-        0x00,
-        0x80,
-        0x80,
-        0x80,
-        0x80,
-        0x00,
-        0x00,
-        0x04,
-        0x00,
-        0x00,
-        0x80,
-        0x80,
-        0x80,
-        0x80,
-        0x00,
-        0x00,
-        0x04,
-        0x00,
-        0x00,
-        0x80,
-        0x80,
-        0x80,
-        0x80,
-        0x00,
-        0x00,
-        0x04,
-        0x00,
-        0x00,
-        0x80,
-        0x80,
-        0x80,
-        0x80,
-        0x00,
-        0x00
-    };
-
-
 int main()
 {
     // USB
-    // TODO: Uncomment for USB
-    // board_init();
-    // tusb_init();
+    board_init();
+    tusb_init();
 
-    // TODO: Uncomment for USB
-    // if(board_init_after_tusb)
-    // {
-    //     board_init_after_tusb();
-    // }
+    if(board_init_after_tusb)
+    {
+        board_init_after_tusb();
+    }
 
     stdio_init_all();
 
@@ -126,7 +83,7 @@ int main()
         NULL,
         &pio->rxf[0], // address for RX FIFO
         MAX_COMMAND_RESPONSE_LEN,
-        false // don't start now
+        true // TODO: change for testing. Seeing if this handles DREQ
     );
 
 
@@ -144,44 +101,54 @@ int main()
     
     while(true)
     {
-        // TODO: Uncomment for USB
-        // tud_task();
+        tud_task();
+        
 
-        if(!controllerConnected(adInf))
+        if(tud_hid_ready() && hidReportPending)
         {
-            originSent = 0;
-            continue;
-        }
-        
-        // controller is connected
-        // check for if origin was sent
-        if(!originSent)
-        {
-            sendCommand(ORIGIN, NULL, adInf);
-            originSent = 1;
-        }
-        
-        // const Command sending = ORIGIN;
+            // uint8_t controllerReport[RESPONSE_LEN] = DEFAULT_RESPONSE;
+            // TODO: Change back to above
+            uint8_t controllerReport[RESPONSE_LEN];
+            for(int i = 0; i < RESPONSE_LEN; i++)
+                controllerReport[i] = 0xFF;
 
-        Command sending = STATUS;
-        uint8_t receiveBuffer[sending.responseBytesLength];
+            if(!controllerConnected(adInf))
+            {
+                originSent = 0;
+                controllerReport[0] = 0xAA;
+            }
+            else
+            {
+                // controller is connected
+                // check for if origin was sent
+                if(!originSent)
+                {
+                    sendCommand(ORIGIN, NULL, adInf);
+                    originSent = 1;
+                }
 
-        sendCommand(sending,
-                    receiveBuffer,
-                    adInf);
+                // const Command sending = ORIGIN;
 
-        // controllerConnected(adInf);
-        // printf("Controller connected?: %d\n", controllerConnected(adInf));
-        
-        sleep_ms(1000);
+                Command sending = STATUS;
+                uint8_t receiveBuffer[sending.responseBytesLength];
 
-        // TODO: Uncomment for USB
-        // if(tud_hid_ready() && hidReportPending)
-        // {
-        //     tud_hid_report(0, defaultResponse, sizeof(defaultResponse));
+                sendCommand(sending,
+                            receiveBuffer,
+                            adInf);
+
+                // TODO: insert controller info
+                for(int i = 0; i < sending.responseBytesLength; i++)
+                {
+                    // info for first controller starts at byte 2 (index 1)
+                    controllerReport[i + 2] = receiveBuffer[i];
+                }
+            }
+
+            tud_hid_report(0, controllerReport, sizeof(controllerReport));
             
-        //     hidReportPending = false;
-        // }
+            hidReportPending = false;
+        }
+
     }
 
     
@@ -189,29 +156,29 @@ int main()
     return 0;
 }
 
-// TODO: Uncomment for USB
-// void tud_hid_report_complete_cb(uint8_t instance,
-//                                 uint8_t const* report,
-//                                 uint16_t len)
-// {
-//     hidReportPending = true;
-// }
+void tud_hid_report_complete_cb(uint8_t instance,
+                                uint8_t const* report,
+                                uint16_t len)
+{
+    hidReportPending = true;
+}
 
 // device to host
-// TODO: Uncomment for USB
-// uint16_t tud_hid_get_report_cb(uint8_t itf,
-//                                uint8_t report_id,
-//                                hid_report_type_t report_type,
-//                                uint8_t* buffer,
-//                                uint16_t reqlen)
-// {
-//     return 0;
-// }
+uint16_t tud_hid_get_report_cb(uint8_t itf,
+                               uint8_t report_id,
+                               hid_report_type_t report_type,
+                               uint8_t* buffer,
+                               uint16_t reqlen)
+{
+    return 0;
+}
 
 // host to device
-// TODO: Uncomment for USB
-// void tud_hid_set_report_cb(uint8_t itf,
-//                            uint8_t report_id,
-//                            hid_report_type_t report_type,
-//                            uint8_t const* buffer,
-//                            uint16_t bufsize);
+void tud_hid_set_report_cb(uint8_t itf,
+                           uint8_t report_id,
+                           hid_report_type_t report_type,
+                           uint8_t const* buffer,
+                           uint16_t bufsize)
+{
+    // empty
+}

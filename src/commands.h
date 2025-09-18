@@ -23,7 +23,7 @@ typedef struct {
 } AdapterInfo;
 
 #define ID ((Command) { 1, 3, { 0x00, 0, 0 } })
-#define STATUS ((Command) { 3, 8, { 0x40, 0x01, 0x00 } })
+#define STATUS ((Command) { 3, 8, { 0x40, 0x00, 0x03 } })
 #define ORIGIN ((Command) { 1, 10, { 0x41, 0, 0 } })
 
 #define MAX_COMMAND_RESPONSE_LEN 10
