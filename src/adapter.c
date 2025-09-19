@@ -12,12 +12,26 @@
 
 #include <stdio.h>
 
+// TODO: LED Debug
+#include "pico/stdlib.h"
+#include "hardware/gpio.h"
+
+#define LED_PIN 25
+// ---
+
 #define DATA_PIN 28
 
 volatile bool hidReportPending = false;
 
 int main()
 {
+    // TODO: LED:
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    set_led(0);
+    // ---
+    
     // USB
     board_init();
     tusb_init();
@@ -66,7 +80,7 @@ int main()
     dma_channel_config dmaConfig = dma_channel_get_default_config(dmaChannel);
 
     // configured to send data blocks in bytes
-    channel_config_set_transfer_data_size(&dmaConfig, DMA_SIZE_8);
+    channel_config_set_transfer_data_size(&dmaConfig, DMA_SIZE_32);
 
     // always read from the same address
     channel_config_set_read_increment(&dmaConfig, false);
@@ -83,7 +97,7 @@ int main()
         NULL,
         &pio->rxf[0], // address for RX FIFO
         MAX_COMMAND_RESPONSE_LEN,
-        true // TODO: change for testing. Seeing if this handles DREQ
+        false
     );
 
 
@@ -106,16 +120,16 @@ int main()
 
         if(tud_hid_ready() && hidReportPending)
         {
-            // uint8_t controllerReport[RESPONSE_LEN] = DEFAULT_RESPONSE;
+            uint8_t controllerReport[RESPONSE_LEN] = DEFAULT_RESPONSE;
             // TODO: Change back to above
-            uint8_t controllerReport[RESPONSE_LEN];
-            for(int i = 0; i < RESPONSE_LEN; i++)
-                controllerReport[i] = 0xFF;
+            // uint8_t controllerReport[RESPONSE_LEN];
+            // for(int i = 0; i < RESPONSE_LEN; i++)
+            //     controllerReport[i] = 0xFF;
 
             if(!controllerConnected(adInf))
             {
                 originSent = 0;
-                controllerReport[0] = 0xAA;
+                // controllerReport[0] = 0xAA;
             }
             else
             {
@@ -131,7 +145,7 @@ int main()
 
                 Command sending = STATUS;
                 uint8_t receiveBuffer[sending.responseBytesLength];
-
+                
                 sendCommand(sending,
                             receiveBuffer,
                             adInf);
@@ -155,6 +169,7 @@ int main()
     dma_channel_unclaim(dmaChannel);
     return 0;
 }
+
 
 void tud_hid_report_complete_cb(uint8_t instance,
                                 uint8_t const* report,
@@ -181,4 +196,9 @@ void tud_hid_set_report_cb(uint8_t itf,
                            uint16_t bufsize)
 {
     // empty
+}
+
+void set_led(int state)
+{
+    gpio_put(LED_PIN, state);
 }

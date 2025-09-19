@@ -1,6 +1,8 @@
 #ifndef ADAPTER_H
 #define ADAPTER_H
 
+void set_led(int state);
+
 #define RESPONSE_LEN 37
 #define DEFAULT_RESPONSE { \
         0x21, \

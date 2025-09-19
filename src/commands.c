@@ -1,4 +1,6 @@
 #include "commands.h"
+#include "adapter.h"
+#include "pico/time.h"
 
 
 void encodeCommands(int byteCount,
@@ -81,6 +83,21 @@ void sendCommand(Command command,
         outBuffer = newDestination;
     }
     zeroBuffer(command, outBuffer);
+
+    // restart PIO and clear FIFOs
+    pio_sm_set_enabled(adInf.pio, 0, false);
+    pio_sm_clear_fifos(adInf.pio, 0);
+    pio_sm_restart(adInf.pio, 0);
+    pio_sm_init(adInf.pio,
+                0,
+                adInf.pioDefaultOffset + adInf.pioOutmodeOffset,
+                &adInf.pioConfig);
+    pio_sm_set_enabled(adInf.pio, 0, true);
+
+    // full read words from DMA
+    uint32_t rxWords[command.responseBytesLength];
+    dma_hw->ints0 = 1u << adInf.dmaChannel;
+
     
     // configure DMA channel
     dma_channel_set_transfer_count(adInf.dmaChannel,
@@ -88,7 +105,7 @@ void sendCommand(Command command,
                                    false);
     // write to method output buffer
     // trigger start of DMA channel
-    dma_channel_set_write_addr(adInf.dmaChannel, outBuffer, false);
+    dma_channel_set_write_addr(adInf.dmaChannel, rxWords, true);
     
 
     int combinedSendLen = COMBINED_LEN(command.bytesLength);
@@ -109,7 +126,25 @@ void sendCommand(Command command,
     // of times for this specific command
     // dma_channel_start(adInf.dmaChannel);
 
-    sleep_us(100);
+
+    // dma_channel_wait_for_finish_blocking(adInf.dmaChannel);
+    uint64_t startTime = time_us_64();
+    const uint64_t TIME_DIFF = 100; // 100 us
+    while(dma_channel_is_busy(adInf.dmaChannel))
+    {
+        set_led(1);
+
+        // break after 100 us
+        if(time_us_64() - startTime >= TIME_DIFF)
+        {
+            dma_channel_abort(adInf.dmaChannel);
+            break;
+        }
+    }
+    set_led(0);
+    
+    for(int i = 0; i < command.responseBytesLength; i++)
+        outBuffer[i] = (uint8_t) (rxWords[i] & 0xFFu);
 
     // for(int i = 0; i < command.responseBytesLength; i++)
     // {
@@ -128,10 +163,6 @@ void sendCommand(Command command,
                 adInf.pioDefaultOffset + adInf.pioOutmodeOffset,
                 &adInf.pioConfig);
     pio_sm_set_enabled(adInf.pio, 0, true);
-
-    // abort DMA channel and wait for finish
-    // dma_channel_abort(adInf.dmaChannel);
-    // TODO: again, changed for testing
 }
 
 int controllerConnected(AdapterInfo adInf)
