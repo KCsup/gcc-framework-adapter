@@ -119,11 +119,12 @@ int sendCommand(Command command,
     
     // send command
     for(int i = 0; i < combinedSendLen; i++)
+        // pio_sm_put(adInf.pio, 0, outputCommands[i]);
         pio_sm_put_blocking(adInf.pio, 0, outputCommands[i]);
 
     // TODO: this is probably too long (garbage data)
     uint64_t startTime = time_us_64();
-    const uint64_t TIME_DIFF = 200; // 100 us
+    const uint64_t TIME_DIFF = 400; // 100 us
     while(dma_channel_is_busy(adInf.dmaChannel))
     {
         set_led(1);

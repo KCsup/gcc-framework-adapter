@@ -133,6 +133,7 @@ int main()
             }
             else
             {
+                sleep_us(50);
                 // controller is connected
                 // check for if origin was sent
                 if(!originSent)
@@ -146,6 +147,11 @@ int main()
                 Command sending = STATUS;
                 uint8_t receiveBuffer[sending.responseBytesLength];
                 
+                // int statusResponse = sendCommand(sending,
+                //                                  receiveBuffer,
+                //                                  adInf);
+
+                // if(!statusResponse) continue;
                 sendCommand(sending,
                             receiveBuffer,
                             adInf);
