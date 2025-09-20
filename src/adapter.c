@@ -80,7 +80,7 @@ int main()
     dma_channel_config dmaConfig = dma_channel_get_default_config(dmaChannel);
 
     // configured to send data blocks in bytes
-    channel_config_set_transfer_data_size(&dmaConfig, DMA_SIZE_32);
+    channel_config_set_transfer_data_size(&dmaConfig, DMA_SIZE_8);
 
     // always read from the same address
     channel_config_set_read_increment(&dmaConfig, false);
@@ -96,7 +96,7 @@ int main()
         &dmaConfig,
         NULL,
         &pio->rxf[0], // address for RX FIFO
-        MAX_COMMAND_RESPONSE_LEN,
+        0,
         false
     );
 
@@ -126,7 +126,7 @@ int main()
             // for(int i = 0; i < RESPONSE_LEN; i++)
             //     controllerReport[i] = 0xFF;
 
-            if(!controllerConnected(adInf))
+            if(!sendCommand(ID, NULL, adInf))
             {
                 originSent = 0;
                 // controllerReport[0] = 0xAA;

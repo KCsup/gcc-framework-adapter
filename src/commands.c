@@ -73,10 +73,12 @@ void zeroBuffer(Command sending, uint8_t buffer[sending.responseBytesLength])
 }
 
 
-void sendCommand(Command command,
+int sendCommand(Command command,
                  uint8_t outBuffer[command.responseBytesLength],
                  AdapterInfo adInf)
 {
+    int commandResponse = 1;
+    
     if(outBuffer == NULL)
     {
         uint8_t newDestination[command.responseBytesLength];
@@ -86,16 +88,15 @@ void sendCommand(Command command,
 
     // restart PIO and clear FIFOs
     pio_sm_set_enabled(adInf.pio, 0, false);
-    pio_sm_clear_fifos(adInf.pio, 0);
-    pio_sm_restart(adInf.pio, 0);
+    // pio_sm_restart(adInf.pio, 0);
     pio_sm_init(adInf.pio,
                 0,
                 adInf.pioDefaultOffset + adInf.pioOutmodeOffset,
                 &adInf.pioConfig);
+    pio_sm_clear_fifos(adInf.pio, 0);
     pio_sm_set_enabled(adInf.pio, 0, true);
 
-    // full read words from DMA
-    uint32_t rxWords[command.responseBytesLength];
+    // clear interrupt
     dma_hw->ints0 = 1u << adInf.dmaChannel;
 
     
@@ -105,7 +106,7 @@ void sendCommand(Command command,
                                    false);
     // write to method output buffer
     // trigger start of DMA channel
-    dma_channel_set_write_addr(adInf.dmaChannel, rxWords, true);
+    dma_channel_set_write_addr(adInf.dmaChannel, outBuffer, true);
     
 
     int combinedSendLen = COMBINED_LEN(command.bytesLength);
@@ -120,16 +121,9 @@ void sendCommand(Command command,
     for(int i = 0; i < combinedSendLen; i++)
         pio_sm_put_blocking(adInf.pio, 0, outputCommands[i]);
 
-    // TODO: compile and test this configuration of the code
-    // since autopush is enabled, this SHOULD only grab info from the RX FIFO
-    // when a full byte is written, then doing the transfer the needed number
-    // of times for this specific command
-    // dma_channel_start(adInf.dmaChannel);
-
-
-    // dma_channel_wait_for_finish_blocking(adInf.dmaChannel);
+    // TODO: this is probably too long (garbage data)
     uint64_t startTime = time_us_64();
-    const uint64_t TIME_DIFF = 100; // 100 us
+    const uint64_t TIME_DIFF = 200; // 100 us
     while(dma_channel_is_busy(adInf.dmaChannel))
     {
         set_led(1);
@@ -137,14 +131,16 @@ void sendCommand(Command command,
         // break after 100 us
         if(time_us_64() - startTime >= TIME_DIFF)
         {
+            commandResponse = 0;
+            
             dma_channel_abort(adInf.dmaChannel);
             break;
         }
     }
     set_led(0);
     
-    for(int i = 0; i < command.responseBytesLength; i++)
-        outBuffer[i] = (uint8_t) (rxWords[i] & 0xFFu);
+    // for(int i = 0; i < command.responseBytesLength; i++)
+    //     outBuffer[i] = (uint8_t) rxWords[i];
 
     // for(int i = 0; i < command.responseBytesLength; i++)
     // {
@@ -163,19 +159,21 @@ void sendCommand(Command command,
                 adInf.pioDefaultOffset + adInf.pioOutmodeOffset,
                 &adInf.pioConfig);
     pio_sm_set_enabled(adInf.pio, 0, true);
+
+    return commandResponse;
 }
 
-int controllerConnected(AdapterInfo adInf)
-{
-    Command id = ID;
-    uint8_t outBuffer[id.responseBytesLength];
-    sendCommand(id, outBuffer, adInf);
+// int controllerConnected(AdapterInfo adInf)
+// {
+//     Command id = ID;
+//     uint8_t outBuffer[id.responseBytesLength];
+//     sendCommand(id, outBuffer, adInf);
 
-    for(int i = 0; i < 3; i++)
-    {
-        if(outBuffer[i] != 0x00) return 1;
-    }
+//     for(int i = 0; i < 3; i++)
+//     {
+//         if(outBuffer[i] != 0x00) return 1;
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 

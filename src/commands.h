@@ -33,10 +33,10 @@ typedef struct {
 void prepareCommand(Command command,
                     uint32_t outputCommands[COMBINED_LEN(command.bytesLength)]);
 
-void sendCommand(Command command,
+int sendCommand(Command command,
                  uint8_t outBuffer[command.responseBytesLength],
                  AdapterInfo adapterInfo);
 
-int controllerConnected(AdapterInfo adapterInfo);
+// int controllerConnected(AdapterInfo adapterInfo);
 
 #endif
