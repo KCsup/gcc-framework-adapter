@@ -164,17 +164,22 @@ int sendCommand(Command command,
     return commandResponse;
 }
 
-// int controllerConnected(AdapterInfo adInf)
-// {
-//     Command id = ID;
-//     uint8_t outBuffer[id.responseBytesLength];
-//     sendCommand(id, outBuffer, adInf);
+void dolphinFormatStatus(uint8_t* statusBuffer)
+{
+    // set the upper half nibble to the DPad data
+    uint8_t dpadN = (statusBuffer[1] & 0x0F) << 4;
 
-//     for(int i = 0; i < 3; i++)
-//     {
-//         if(outBuffer[i] != 0x00) return 1;
-//     }
+    // move trigger data to bottom half nibble, leaving space for start
+    uint8_t trigN = (statusBuffer[1] & 0xF0) >> 3;
 
-//     return 0;
-// }
+    uint8_t startButton = (statusBuffer[0] & 0x10) >> 4;
+    trigN |= startButton;
 
+    // now, apply the isolated data to the buffer in the dolphin format
+
+    statusBuffer[0] &= 0x0F; // clear upper nibble
+    statusBuffer[0] |= dpadN; // insert dpad data
+
+    statusBuffer[1] &= 0x00;
+    statusBuffer[1] |= trigN; // insert into lower nibble
+}

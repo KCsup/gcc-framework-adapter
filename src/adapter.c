@@ -19,7 +19,7 @@
 #define LED_PIN 25
 // ---
 
-#define DATA_PIN 28
+#define DATA_PIN 17
 
 volatile bool hidReportPending = false;
 
@@ -152,15 +152,22 @@ int main()
                 //                                  adInf);
 
                 // if(!statusResponse) continue;
-                sendCommand(sending,
-                            receiveBuffer,
-                            adInf);
+                int statusResponse = sendCommand(sending,
+                                                 receiveBuffer,
+                                                 adInf);
 
-                // TODO: insert controller info
-                for(int i = 0; i < sending.responseBytesLength; i++)
+                if(statusResponse)
                 {
-                    // info for first controller starts at byte 2 (index 1)
-                    controllerReport[i + 2] = receiveBuffer[i];
+                    
+                    controllerReport[1] |= 0x10;
+
+                    dolphinFormatStatus(receiveBuffer);
+                    
+                    for(int i = 0; i <= sending.responseBytesLength; i++)
+                    {
+                        // info for first controller starts at byte 2 (index 1)
+                        controllerReport[i + 2] = receiveBuffer[i];
+                    }
                 }
             }
 
