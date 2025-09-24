@@ -39,4 +39,9 @@ int sendCommand(Command command,
 
 void dolphinFormatStatus(uint8_t* statusBuffer);
 
+void dolphinFormatOrigin(const uint8_t* originBuffer,
+                         uint8_t formatBuffer[6]);
+
+void applyDolphinOrigin(uint8_t* statusBuffer, uint8_t dolphinOrigin[6]);
+
 #endif

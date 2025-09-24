@@ -41,8 +41,6 @@ int main()
         board_init_after_tusb();
     }
 
-    stdio_init_all();
-
     // set sys clock to 125,000 KHz (125 MHz)
     set_sys_clock_khz(125000, true);
 
@@ -112,6 +110,7 @@ int main()
     };
 
     int originSent = 0;
+    uint8_t dolphinOrigin[6] = { 0x00 };
     
     while(true)
     {
@@ -121,10 +120,6 @@ int main()
         if(tud_hid_ready() && hidReportPending)
         {
             uint8_t controllerReport[RESPONSE_LEN] = DEFAULT_RESPONSE;
-            // TODO: Change back to above
-            // uint8_t controllerReport[RESPONSE_LEN];
-            // for(int i = 0; i < RESPONSE_LEN; i++)
-            //     controllerReport[i] = 0xFF;
 
             if(!sendCommand(ID, NULL, adInf))
             {
@@ -138,8 +133,18 @@ int main()
                 // check for if origin was sent
                 if(!originSent)
                 {
-                    sendCommand(ORIGIN, NULL, adInf);
+                    Command origin = ORIGIN;
+                    uint8_t originResponse[origin.responseBytesLength];
+                    sendCommand(origin, originResponse, adInf);
+
+                    // start writing origin data at the 1st index
+                    dolphinFormatOrigin(originResponse, dolphinOrigin);
+
+                    // now, an array for the origin data is available
+                   
                     originSent = 1;
+
+                    sleep_us(50);
                 }
 
                 // const Command sending = ORIGIN;
@@ -162,6 +167,8 @@ int main()
                     controllerReport[1] |= 0x10;
 
                     dolphinFormatStatus(receiveBuffer);
+
+                    applyDolphinOrigin(receiveBuffer, dolphinOrigin);
                     
                     for(int i = 0; i <= sending.responseBytesLength; i++)
                     {
@@ -209,6 +216,13 @@ void tud_hid_set_report_cb(uint8_t itf,
                            uint16_t bufsize)
 {
     // empty
+    // if(report_type == HID_REPORT_TYPE_OUTPUT)
+    // {
+        if(buffer[0] == 0x13)
+            set_led(1);
+    // }
+
+    // set_led(0);
 }
 
 void set_led(int state)

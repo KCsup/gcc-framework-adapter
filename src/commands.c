@@ -122,14 +122,11 @@ int sendCommand(Command command,
         // pio_sm_put(adInf.pio, 0, outputCommands[i]);
         pio_sm_put_blocking(adInf.pio, 0, outputCommands[i]);
 
-    // TODO: this is probably too long (garbage data)
     uint64_t startTime = time_us_64();
-    const uint64_t TIME_DIFF = 400; // 100 us
+    const uint64_t TIME_DIFF = 400; // 400 us
     while(dma_channel_is_busy(adInf.dmaChannel))
     {
-        set_led(1);
-
-        // break after 100 us
+        // break after 400 us
         if(time_us_64() - startTime >= TIME_DIFF)
         {
             commandResponse = 0;
@@ -138,20 +135,6 @@ int sendCommand(Command command,
             break;
         }
     }
-    set_led(0);
-    
-    // for(int i = 0; i < command.responseBytesLength; i++)
-    //     outBuffer[i] = (uint8_t) rxWords[i];
-
-    // for(int i = 0; i < command.responseBytesLength; i++)
-    // {
-    //     printf("Read Data %d: %02x\n", i, outBuffer[i]);
-    // }
-
-    // while(dma_hw->ch[adInf.dmaChannel].ctrl_trig & DMA_CH0_CTRL_TRIG_BUSY_BITS);
-    // while(dma_channel_is_busy(adInf.dmaChannel));
-
-    // sleep_us(150);
 
     // return to outmode
     pio_sm_set_enabled(adInf.pio, 0, false);
@@ -164,6 +147,11 @@ int sendCommand(Command command,
     return commandResponse;
 }
 
+// dolphin needed format (from nibble 1 up, moving downward)
+// DU, DD, DR, DL
+// Y, X, B, A,
+// (empty)
+// LT, RT, Z, Start
 void dolphinFormatStatus(uint8_t* statusBuffer)
 {
     // set the upper half nibble to the DPad data
@@ -182,4 +170,32 @@ void dolphinFormatStatus(uint8_t* statusBuffer)
 
     statusBuffer[1] &= 0x00;
     statusBuffer[1] |= trigN; // insert into lower nibble
+}
+
+// formats the origin analog data to a set buffer with the format
+// [ joyX, joyY, cX, cY, leftTrigA, rightTrigA ]
+void dolphinFormatOrigin(const uint8_t* originBuffer,
+                         uint8_t formatBuffer[6])
+{
+    for(int i = 0; i < 6; i++)
+        formatBuffer[i] = originBuffer[i + 2];
+}
+
+// TODO: debug origin differences
+void applyDolphinOrigin(uint8_t* statusBuffer,
+                        uint8_t dolphinOrigin[6])
+{
+    // stick values range from 0 to 255, so the center value for X and Y
+    // should be 128
+
+    // add the hex value of 128 to each difference from the origin
+    for(int i = 0; i < 4; i++)
+        statusBuffer[i + 2] = 0x80 + (statusBuffer[i + 2] - dolphinOrigin[i]);
+        
+    // just encode the difference in origin for the triggers
+    for(int i = 4; i < 6; i++)
+        if(dolphinOrigin[i] >= statusBuffer[i + 2])
+            statusBuffer[i + 2] = 0;
+        else
+            statusBuffer[i + 2] -= dolphinOrigin[i];
 }

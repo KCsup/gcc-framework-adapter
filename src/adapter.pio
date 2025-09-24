@@ -7,8 +7,8 @@ PUBLIC out_init:
 	set pins, 1 ; set out line to high
 	set pindirs, 1 ; pullup for outpup
 out_loop:
-	pull ifempty block ; do nothing if there is nothing to pull, and stall
-					   ; until TX FIFO is read from
+	pull ifempty block ; do nothing if the OSR is empty, and stall
+					   ; until TX FIFO has block to read from
 	out x, 1 ; send next out bit to x register
 	out y, 1 ; is this the end of the output message
 	set pins, 0 [24] ; set pin low for 1 us
