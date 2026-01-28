@@ -1,0 +1,46 @@
+#ifndef ADAPTER_H
+#define ADAPTER_H
+
+void set_led(int state);
+
+#define RESPONSE_LEN 37
+#define DEFAULT_RESPONSE { \
+        0x21, \
+        0x04, \
+        0x00, \
+        0x00, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x00, \
+        0x00, \
+        0x04, \
+        0x00, \
+        0x00, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x00, \
+        0x00, \
+        0x04, \
+        0x00, \
+        0x00, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x00, \
+        0x00, \
+        0x04, \
+        0x00, \
+        0x00, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x80, \
+        0x00, \
+        0x00 }
+
+#endif
